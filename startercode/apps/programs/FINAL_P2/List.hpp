@@ -1,0 +1,390 @@
+#pragma once
+
+#include <iostream>
+#include <functional>
+
+using namespace std;
+
+template <typename T>
+class List
+{
+private:
+    class Node
+    {
+    public:
+        T data;
+        Node* prev;
+        Node* next;
+
+        bool isHiddenNode = false;
+    };
+
+    Node* head;
+    Node* tail;
+
+public:
+    class const_iterator
+    {
+    protected:
+        Node* current;
+
+        T& retrieve() const
+        {
+            return current->data;
+        }
+
+        const_iterator(Node* p) : current(p) {}
+
+        friend class List<T>;
+
+    public:
+        const_iterator() : current(nullptr) {}
+
+        virtual const T& operator*() const
+        {
+            return retrieve();
+        }
+
+        const_iterator& operator++()
+        {
+            current = current->next;
+            return *this;
+        }
+
+        const_iterator operator++(int)
+        {
+            const_iterator old = *this;
+            ++(*this);
+            return old;
+        }
+
+        bool operator==(const const_iterator& rhs) const
+        {
+            return current == rhs.current;
+        }
+
+        bool operator!=(const const_iterator& rhs) const
+        {
+            return !(*this == rhs);
+        }
+    };
+
+    class iterator : public const_iterator
+    {
+        protected:
+            iterator(Node* p) : const_iterator(p) {}
+
+            friend class List<T>;
+
+        public:
+            iterator() {}
+
+            T& operator*()
+            {
+                return const_iterator::retrieve();
+            }
+
+            const T& operator*() const
+            {
+                return const_iterator::operator*();
+            }
+
+            iterator& operator++()
+            {
+                this->current = this->current->next;
+                return *this;
+            }
+
+            iterator operator++(int)
+            {
+                iterator old = *this;
+                ++(*this);
+                return old;
+            }
+        };
+
+private:
+    void setupList()
+    {
+        Node* newNode = new Node();
+
+        newNode->next = tail;
+        newNode->prev = head;
+        head->next = newNode;
+        tail->prev = newNode;
+    }
+
+
+    void deleteListContents()
+    {
+        Node* current = head->next;
+        Node* temp = nullptr;
+
+        while (current != tail)
+        {
+
+            temp = current->next;
+            delete current;
+            current = temp;
+        }
+
+        head->next = tail;
+        tail->prev = head;
+        tail->next = nullptr;
+        head->prev = nullptr;
+    }
+
+
+public:
+    List()
+    {
+        head = new Node();
+        head->isHiddenNode = true;
+
+        tail = new Node();
+        tail->isHiddenNode = true;
+
+        head->prev = nullptr;
+        head->next = tail;
+        tail->prev = head;
+        tail->next = nullptr;
+    }
+
+
+    List(T newData)
+    {
+        head = new Node();
+        tail = new Node();
+
+        head->isHiddenNode = true;
+        tail->isHiddenNode = true;
+
+        head->prev = nullptr;
+        head->next = tail;
+        tail->prev = head;
+        tail->next = nullptr;
+
+        setupList();
+
+        (head->next)->data = newData;
+    }
+
+
+    List(const List& rhs) : List()
+    {
+        for (Node* curr = rhs.head->next; curr != rhs.tail; curr = curr->next)
+        {
+            push_back(curr->data);
+        }
+    }
+
+
+    List& operator=(const List& rhs)
+    {
+        if (this != &rhs)
+        {
+            deleteListContents();
+
+            for (Node* curr = rhs.head->next; curr != rhs.tail; curr = curr->next)
+            {
+                push_back(curr->data);
+            }
+        }
+        return *this;
+    }
+
+
+    List(List&& rhs)
+    {
+        head = rhs.head;
+        tail = rhs.tail;
+        rhs.head = nullptr;
+        rhs.tail = nullptr;
+    }
+
+
+    List& operator=(List&& rhs)
+    {
+        if (this != &rhs)
+        {
+            deleteListContents();
+
+            delete head;
+            delete tail;
+
+            head = rhs.head;
+            tail = rhs.tail;
+            rhs.head = nullptr;
+            rhs.tail = nullptr;
+        }
+        return *this;
+    }
+
+
+    virtual ~List()
+    {
+        if (head != nullptr && tail != nullptr)
+        {
+            deleteListContents();
+
+            delete head;
+            delete tail;
+        }
+        head = nullptr;
+        tail = nullptr;
+    }
+
+    bool empty() const
+    {
+        return head->next == tail;
+    }
+
+
+    iterator begin() const
+    {
+        return iterator(head->next);
+    }
+    iterator end() const
+    {
+        return iterator(tail);
+    }
+
+    const_iterator cbegin() const
+    {
+        return const_iterator(head->next);
+    }
+    const_iterator cend() const
+    {
+
+        return const_iterator(tail);
+    }
+
+    iterator insert(iterator itr, const T& x)
+    {
+        Node* p = itr.current;
+        Node* newNode = new Node{x, p->prev, p};
+
+        p->prev->next = newNode;
+        p->prev = newNode;
+
+        return iterator(newNode);
+    }
+
+    iterator erase(iterator itr)
+    {
+        Node* p = itr.current;
+        iterator returnIterator(p->next);
+
+        p->prev->next = p->next;
+        p->next->prev = p->prev;
+        delete p;
+
+        return returnIterator;
+    }
+
+    iterator erase(iterator from, iterator to)
+    {
+        iterator itr = from;
+
+        while (itr != to)
+        {
+            itr = erase(itr);
+        }
+        return to;
+    }
+
+
+
+    void push_front(T data)
+    {
+        if (empty())
+        {
+            setupList();
+
+            head->next->data = data;
+        }
+        else
+        {
+            Node* actualHead = head->next;
+            Node* newNode = new Node();
+
+            newNode->data = data;
+            newNode->next = actualHead;
+            newNode->prev = head;
+            actualHead->prev = newNode;
+            head->next = newNode;
+        }
+    }
+
+    void push_back(T data)
+    {
+        if (empty())
+        {
+            setupList();
+
+            tail->prev->data = data;
+        }
+        else
+        {
+            Node* actualTail = tail->prev;
+            Node* newNode = new Node();
+
+            newNode->data = data;
+            newNode->prev = actualTail;
+            newNode->next = tail;
+            actualTail->next = newNode;
+            tail->prev = newNode;
+        }
+    }
+
+    T front()
+    {
+        return head->next->data;
+    }
+    T back()
+    {
+        return tail->prev->data;
+    }
+
+    void pop_back()
+    {
+        if (!empty())
+        {
+            Node* lastNode = tail->prev;
+
+            tail->prev = lastNode->prev;
+            tail->prev->next = tail;
+            delete lastNode;
+        }
+        else
+        {
+            cerr << "pop_back(): Attempt to pop from empty list." << endl;
+        }
+    }
+    void pop_front()
+    {
+        if (!empty())
+        {
+            Node* firstNode = head->next;
+
+            head->next = firstNode->next;
+            head->next->prev = head;
+            delete firstNode;
+        }
+        else
+        {
+            cerr << "pop_front(): Attempt to pop from empty list." << endl;
+        }
+    }
+
+    void traverse(function<void(T& data)> doIt)
+    {
+        Node* current = head->next;
+
+        while (current != tail)
+        {
+            doIt(current->data);
+            current = current->next;
+        }
+    }
+};
